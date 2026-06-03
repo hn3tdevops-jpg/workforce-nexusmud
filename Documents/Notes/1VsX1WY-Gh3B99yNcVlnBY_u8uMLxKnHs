@@ -1,0 +1,184 @@
+# Chat Updates Summary - Additional Material to Digest
+
+## Key Additions from ChatGPT & Cody Garrett
+
+### 1. Mermaid Diagrams to Add
+
+Three critical diagrams to embed in the documentation:
+
+#### Diagram A - Architecture Overview
+```mermaid
+flowchart TD
+  A[Familiar Product Surfaces<br/>Workforce / CRM / Manager Views]
+  B[System Backbone<br/>State + Event Log + Projection Workers]
+  C[Read Experience<br/>Timelines / Boards / Dashboards / Alerts]
+  
+  A --> B
+  B --> C
+```
+
+#### Diagram B - Data Flow Pipeline
+```mermaid
+flowchart LR
+  A[User Action] --> B[API / Command Handler]
+  B --> C[State Update]
+  B --> D[Event Log]
+  D --> E[Projection Worker]
+  E --> F[Projection Table]
+  F --> G[Timeline API]
+  G --> H[UI Timeline / Dashboard]
+```
+
+#### Diagram C - MVP Room Loop (Sequence Diagram)
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant API as Backend API
+  participant EL as Event Log
+  participant PW as Projection Worker
+  participant TL as Room Timeline Projection
+  participant UI as Demo UI
+  
+  U->>API: Mark room clean
+  API->>API: Update room.status
+  API->>EL: Append room.status_changed
+  PW->>EL: Read new event
+  PW->>TL: Insert timeline row
+  UI->>API: Fetch timeline
+  API-->>UI: Updated room history
+```
+
+**Placement**: One diagram on each major page (architecture overview, event system, projection worker, demo workflow)
+
+### 2. Developer Starter Kit Page
+
+Create a new documentation page called "Developer Starter Kit" with these sections:
+
+#### Page Structure
+- Overview
+- SQL Files
+- Event Examples
+- API Examples
+- Projection Worker Example
+- Download Bundle
+
+#### Sections to Include
+
+1. **Core SQL Schema**
+   - `schema_core.sql`
+   - `schema_events.sql`
+   - `schema_projections.sql`
+
+2. **Event Examples**
+   - `room.status_changed`
+   - `issue.created`
+   - `issue.resolved`
+
+3. **Projection Worker Example**
+   - Python worker implementation
+   - Event handler pattern
+
+4. **API Client Examples**
+   - JavaScript fetch examples
+   - Python requests examples
+   - Sample timeline query
+
+#### Minimal Downloadable Bundle
+- `schema.sql` - Core database schema
+- `worker.py` - Projection worker example
+- `api_examples.js` - Frontend API client
+- `event_examples.json` - Sample event payloads
+
+### 3. Client-Side Search Functionality
+
+Implement lightweight full-text search using JSON index.
+
+#### Search Index Structure
+```json
+[
+  {
+    "title": "room.status_changed",
+    "page": "event-system",
+    "section": "Canonical Events",
+    "content": "Event emitted when room status changes."
+  },
+  {
+    "title": "room_timeline_projection",
+    "page": "projection-worker",
+    "section": "Projection Tables",
+    "content": "Display-ready room timeline read model."
+  }
+]
+```
+
+#### MVP Search Scope
+Search only:
+- Event types
+- Table/schema names
+- Endpoint names
+- Projection worker sections
+- Implementation notes
+
+#### Do NOT search yet
+- Attachments
+- Generated diagrams
+- External docs
+- Multi-file semantic search
+
+#### Recommended Libraries
+- `MiniSearch` (lightweight, client-side)
+- `FlexSearch` (more powerful)
+- Plain JSON filter (simplest MVP)
+
+#### Search UI
+- Simple search bar at top of docs
+- Show matching page + section
+- Click jumps to anchor
+
+### 4. Updated Page Structure
+
+Final documentation site structure:
+- Home
+- Architecture (with layered system diagram + data flow diagram)
+- Event System (with event types)
+- Projection Worker (with worker lifecycle diagram)
+- Timeline API
+- Implementation
+- Developer Starter Kit (NEW)
+- Search bar (global, top-level)
+
+### 5. Build Order (Priority)
+
+1. Add Mermaid diagrams to existing pages
+2. Create Developer Starter Kit page
+3. Package code snippets into downloadable files
+4. Add client-side search index
+5. Wire search bar into all doc pages
+
+### 6. Scope Boundaries
+
+**v1 Documentation Release Includes:**
+- Architecture overview with diagrams
+- Event system page
+- Projection worker page
+- Developer starter kit page
+- Lightweight full-text search
+- Mermaid diagrams embedded inline
+
+**NOT in v1:**
+- Live code playground
+- Generated SDKs
+- Versioned docs portal
+- Backend-powered search
+
+### 7. Framing Line
+
+> The documentation layer should make the system visually understandable, implementation-ready, and quickly searchable without exceeding the scope of the MVP.
+
+## Next Steps
+
+1. Integrate Mermaid diagrams into existing pages
+2. Create Developer Starter Kit page with code samples
+3. Implement client-side search with MiniSearch or plain JSON filter
+4. Add search bar to navigation
+5. Package downloadable code bundle

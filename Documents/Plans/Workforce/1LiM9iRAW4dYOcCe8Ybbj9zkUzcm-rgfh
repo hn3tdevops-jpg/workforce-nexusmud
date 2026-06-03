@@ -1,0 +1,354 @@
+
+# Workforce Cloud System — Unified Architecture & Implementation Master Plan
+
+This document merges all prior planning into a single structured implementation guide covering:
+
+- Multi-tenant backend control plane
+- Tenant / Worker / Agent planes
+- Per-location RBAC with delegated location owners
+- Job title as display-only value
+- UI architecture (dark theme, business selector, collapsible nav, navigation IA)
+- Authorization rules
+- API structure
+- Implementation order
+- Guardrails and hard constraints
+
+======================================================================
+SECTION 1 — SYSTEM ARCHITECTURE OVERVIEW
+======================================================================
+
+The platform consists of 4 logical planes operating on one backend:
+
+1) CONTROL PLANE (Platform Admin)
+   - Cross-tenant management
+   - Business provisioning
+   - Global audit logs
+   - Permission templates
+   - Agent registry & credentials
+   - Data export/import tools
+
+2) TENANT PLANE (Business Owners / Managers)
+   - Employees
+   - Roles & Permissions
+   - Location-scoped access
+   - Scheduling
+   - Reports
+   - Integrations
+
+3) WORKER PLANE (Employees)
+   - My schedule
+   - Time clock
+   - Requests
+   - Profile display (job title per location)
+
+4) AGENT PLANE (AI agents / integrations)
+   - API key credentials
+   - Explicit scoped permissions
+   - Run tracking + logs
+   - Least privilege enforcement
+
+Design rule:
+One backend. Different scopes. UI only reflects what backend policy allows.
+
+======================================================================
+SECTION 2 — MULTI-TENANCY MODEL
+======================================================================
+
+Core Entities:
+
+Business
+- id
+- name
+- settings_json
+
+Location
+- id
+- business_id
+- name
+- timezone
+- settings_json
+
+User
+- id
+- email
+- status
+
+Every tenant-owned table must include:
+- business_id
+- optional location_id where relevant
+
+======================================================================
+SECTION 3 — PER-LOCATION RBAC MODEL (FINALIZED DESIGN)
+======================================================================
+
+CORE PRINCIPLES:
+- Permissions come ONLY from Roles.
+- Roles can be BUSINESS-scoped or LOCATION-scoped.
+- Users can have different Roles at different Locations.
+- Job Title is display-only and stored on assignment.
+
+------------------------------------
+TABLES
+------------------------------------
+
+roles
+- id
+- business_id
+- scope_type ENUM('BUSINESS','LOCATION')
+- location_id NULL (required if scope='LOCATION')
+- name
+- priority INT DEFAULT 0
+
+permissions
+- id
+- key (unique)  example: 'employees.read'
+
+role_permissions
+- role_id
+- permission_id
+(unique pair)
+
+user_role_assignments  (CRITICAL TABLE)
+- id
+- user_id
+- business_id
+- scope_type ENUM('BUSINESS','LOCATION')
+- location_id NULL (required if scope='LOCATION')
+- role_id
+- job_title_label NULL
+- created_by_user_id
+- created_at
+
+------------------------------------
+CONSTRAINTS
+------------------------------------
+
+- LOCATION scope requires location_id
+- BUSINESS scope must not have location_id
+- Assignment scope must match role scope
+- Role business_id must match assignment business_id
+- Prevent duplicate assignments (unique composite key)
+- Enforce tenant scoping everywhere
+
+------------------------------------
+AUTHORIZATION RULE
+------------------------------------
+
+User can perform action X at location L if:
+
+EXISTS assignment WHERE:
+    (
+        scope_type = 'BUSINESS'
+        AND role includes permission_key
+    )
+    OR
+    (
+        scope_type = 'LOCATION'
+        AND location_id = L
+        AND role includes permission_key
+    )
+
+IMPORTANT:
+job_title_label is NEVER used in permission checks.
+
+======================================================================
+SECTION 4 — LOCATION OWNER DELEGATED MANAGEMENT
+======================================================================
+
+System Role:
+"Location Owner" (LOCATION scoped)
+
+Permissions:
+- rbac.location_roles.manage
+- rbac.location_assignments.manage
+
+Rules:
+Only users with those permissions at that location may:
+- Create/edit LOCATION roles for that location
+- Assign/revoke roles at that location
+
+Cannot:
+- Modify roles outside their location
+- Grant business-wide roles unless explicitly allowed
+
+Optional guard:
+Prevent removing last Location Owner at a location.
+
+======================================================================
+SECTION 5 — PROFILE PAGE / JOB TITLE DISPLAY
+======================================================================
+
+Job title is NOT a separate system.
+It is stored in user_role_assignments.job_title_label.
+
+For a given location context:
+
+1) Fetch LOCATION assignments for that user at location.
+2) Choose primary:
+   - highest roles.priority
+3) Display:
+   job_title = job_title_label if set else role.name
+4) Optionally list secondary roles.
+
+Never use job_title for authorization.
+
+======================================================================
+SECTION 6 — EFFECTIVE PERMISSIONS COMPUTATION
+======================================================================
+
+Given selected business_id and location_id:
+
+effective_permissions =
+    UNION(
+        permissions from BUSINESS assignments,
+        permissions from LOCATION assignments at location
+    )
+
+Returned to frontend for UI gating.
+Backend remains source of truth.
+
+======================================================================
+SECTION 7 — API STRUCTURE
+======================================================================
+
+/api/v1/auth/*
+/api/v1/control/*
+/api/v1/tenant/*
+/api/v1/worker/*
+/api/v1/agent/*
+
+RBAC endpoints:
+
+GET  /api/rbac/locations/{location_id}/roles
+POST /api/rbac/locations/{location_id}/roles
+PATCH /api/rbac/locations/{location_id}/roles/{role_id}
+DELETE /api/rbac/locations/{location_id}/roles/{role_id}
+
+GET  /api/rbac/locations/{location_id}/assignments
+POST /api/rbac/locations/{location_id}/assignments
+DELETE /api/rbac/locations/{location_id}/assignments/{assignment_id}
+
+Profile endpoint:
+GET /api/locations/{location_id}/users/{user_id}/profile
+
+======================================================================
+SECTION 8 — UI / FRONTEND IMPLEMENTATION PLAN
+======================================================================
+
+-------------------------------------------------
+1) DARK THEME SYSTEM
+-------------------------------------------------
+
+Use CSS variables (design tokens).
+
+Minimum tokens:
+--bg
+--bg-elevated
+--text
+--text-muted
+--border
+--primary
+--primary-contrast
+--success
+--warning
+--danger
+--nav-bg
+--nav-text
+--nav-active
+
+Toggle:
+document.documentElement.dataset.theme = "dark"
+
+Persist:
+localStorage + optional users.theme_pref
+
+Acceptance:
+All pages readable
+Status colors distinct
+Tables/forms consistent contrast
+
+-------------------------------------------------
+2) BUSINESS SELECTOR
+-------------------------------------------------
+
+Endpoint:
+GET /api/me/businesses
+Returns: [{id, name, is_default}]
+
+Frontend:
+Display name
+Value = id
+Persist selected business_id
+
+Never show raw IDs in UI.
+
+-------------------------------------------------
+3) COLLAPSIBLE NAVBAR
+-------------------------------------------------
+
+Desktop:
+Expanded = icons + labels
+Collapsed = icons only + tooltips
+
+Mobile:
+Hamburger drawer
+
+Persist collapsed state in localStorage.
+
+-------------------------------------------------
+4) NAVIGATION IA (GROUPED)
+-------------------------------------------------
+
+Overview
+Operations
+People
+Inventory
+Scheduling
+Reports
+Admin / Setup
+
+Rules:
+- Only show items user has permission for.
+- Filter by selected business + location.
+- Highlight active section.
+
+======================================================================
+SECTION 9 — IMPLEMENTATION ORDER
+======================================================================
+
+1. Multi-tenant structure
+2. RBAC core
+3. Location owner delegation
+4. Profile display logic
+5. Effective permissions API
+6. Business selector fix
+7. Navigation regrouping + RBAC filtering
+8. Collapsible nav
+9. Dark theme tokens
+10. Audit logging hardening
+
+======================================================================
+SECTION 10 — HARD GUARDRAILS
+======================================================================
+
+DO NOT:
+- Use job_title in permission checks
+- Allow cross-location role editing without permission
+- Skip tenant scoping in queries
+
+ALWAYS:
+- Validate scope_type matches role
+- Validate business_id consistency
+- Audit role and assignment changes
+- Enforce least privilege
+
+======================================================================
+SUCCESS DEFINITION
+======================================================================
+
+- Clean multi-tenant backend
+- Per-location delegated RBAC
+- Job title purely display-based
+- UI reflects permissions dynamically
+- Fully auditable role & assignment changes
+- Agent permissions isolated and scoped

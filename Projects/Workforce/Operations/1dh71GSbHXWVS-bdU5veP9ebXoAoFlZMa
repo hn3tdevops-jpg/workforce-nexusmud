@@ -1,0 +1,82 @@
+Silver Sands Motel Housekeeping Operations & Property Data System
+Consolidated Planning Document
+
+Objective Create an organized operational and digital system for
+managing housekeeping workflow, room inventory, property layout,
+maintenance tracking, staff tasks, and operational data. The goal is to
+build a simple system that works while actively cleaning rooms, allowing
+incremental data collection without disrupting daily work. Core
+Operational Strategy Phase 1 --- Information Capture Collect structured
+property data: buildings, floors, sectors, rooms, assets, housekeeping
+tasks, and maintenance issues.
+
+Phase 2 --- Structured Data System Create a database to track rooms,
+locations, status, housekeeping assignments, and asset inventory.
+
+Phase 3 --- Automation Platform Use the Workforce repository
+architecture to build tools for room tracking, task lists, bulk updates,
+and operational dashboards. Property Layout Structure Property └──
+Building └── Floor └── Sector └── Room Known Property Layout Data
+Building 1 Floor 1
+
+North Side Sector Rooms: 12, 11, 10, 9, 8, 7
+
+South Side Sector Rooms: 1, 2, 3, 4, 5, 6 Room Database Design Table:
+rooms
+
+Fields: id -- primary key building -- building number floor -- floor
+level sector -- north/south/etc room_number -- room identifier
+room_group -- logical grouping housekeeping_status -- clean / dirty /
+inspect maintenance_status -- ok / issue last_cleaned -- timestamp
+Sector Table Table: sectors
+
+Fields: id building floor sector_name description Room Groups North
+Group: 7, 8, 9, 10, 11, 12
+
+South Group: 1, 2, 3, 4, 5, 6 Initial SQL Schema CREATE TABLE rooms ( id
+SERIAL PRIMARY KEY, building INT, floor INT, sector TEXT, room_number
+INT, room_group TEXT, housekeeping_status TEXT DEFAULT 'dirty',
+maintenance_status TEXT DEFAULT 'ok', last_cleaned TIMESTAMP ); Example
+Room Inserts INSERT INTO rooms
+(building,floor,sector,room_number,room_group) VALUES
+(1,1,'South',1,'South Group'), (1,1,'South',2,'South Group'),
+(1,1,'South',3,'South Group'), (1,1,'South',4,'South Group'),
+(1,1,'South',5,'South Group'), (1,1,'South',6,'South Group');
+
+INSERT INTO rooms (building,floor,sector,room_number,room_group) VALUES
+(1,1,'North',12,'North Group'), (1,1,'North',11,'North Group'),
+(1,1,'North',10,'North Group'), (1,1,'North',9,'North Group'),
+(1,1,'North',8,'North Group'), (1,1,'North',7,'North Group'); Bulk
+Operations Example UPDATE rooms SET housekeeping_status='clean' WHERE
+building=1 AND floor=1 AND sector='North'; Housekeeping Data To Collect
+Room info: bed count TV fridge microwave coffee maker heater / AC
+
+Supplies: towels hand towels washcloths sheets pillowcases blankets
+trash bags soap shampoo Maintenance Tracking Track issues such as:
+broken fixtures lights out plumbing issues HVAC problems furniture
+damage Daily Housekeeping Workflow 1. Identify dirty rooms (checkout,
+stayover, vacant) 2. Assign room groups 3. Clean rooms 4. Update system
+status
+
+Room status flow: Dirty → Cleaning → Clean → Inspected Workforce
+Repository Overview The Workforce repository is structured as a Python
+backend monorepo.
+
+Top Level: README.md AGENTS.md alembic.ini conftest.py
+
+Signals: Alembic -- database migrations (SQLAlchemy/PostgreSQL) pytest
+-- automated testing Monorepo layout -- apps + packages Potential
+Automation Tools Housekeeping management dashboard Cleaning assignment
+tracking Maintenance reporting system Inventory tracking Operational
+reporting and analytics Fast Data Collection Strategy While cleaning
+rooms, capture quick notes such as:
+
+Room 12 2 beds fridge microwave heater weak lamp broken
+
+Convert these later into database entries. Immediate Next Steps 1. Map
+entire motel layout 2. Create database tables (rooms, sectors, assets,
+maintenance, tasks) 3. Populate room records 4. Begin tracking
+housekeeping and maintenance data Long Term Goal Build a digital
+operations platform for Silver Sands Motel providing: real‑time room
+status organized housekeeping workflow asset tracking maintenance
+management operational reporting
