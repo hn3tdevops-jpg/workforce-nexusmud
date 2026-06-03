@@ -3,8 +3,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from typing import Tuple, List, Optional
 
 from packages.agent_core.npc import NPCManager
-from packages.economy.models import Trade
-from packages.territory.models import Territory
 from packages.world_engine.graph import WorldGraph
 
 Base = declarative_base()
