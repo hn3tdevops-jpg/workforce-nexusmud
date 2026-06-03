@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import uvicorn
 from typing import Dict, List
 import json
+import logging
 
 from packages.world_engine.engine import WorldEngine
 
@@ -32,6 +33,7 @@ class ConnectionManager:
             if player_id in self.active_connections:
                 await self.active_connections[player_id].send_text(message)
 
+logger = logging.getLogger('nexusmud')
 manager = ConnectionManager()
 
 @app.get("/health")
@@ -63,3 +65,11 @@ async def websocket_endpoint(websocket: WebSocket, player_id: str):
         manager.disconnect(player_id)
         room_players = world_engine.player_disconnect(player_id)
         await manager.broadcast(f"{player_id} has left the realm.", room_players)
+    except Exception as e:
+        logger.exception('Unhandled error in websocket for %s: %s', player_id, e)
+        try:
+            manager.disconnect(player_id)
+            room_players = world_engine.player_disconnect(player_id)
+            await manager.broadcast(f"{player_id} has left the realm due to error.", room_players)
+        except Exception:
+            pass
