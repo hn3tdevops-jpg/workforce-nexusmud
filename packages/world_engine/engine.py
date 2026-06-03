@@ -123,15 +123,11 @@ class WorldEngine:
         room = db.query(RoomData).filter(RoomData.id == player.room_id).first()
         db.close()
         
-        room_desc = f"[{room.name}]
-{room.description}"
+        room_desc = f"[{room.name}]\n{room.description}"
         players_here = self.get_players_in_room(player.room_id)
         
-        return f"Welcome to NexusMUD!
+        return f"Welcome to NexusMUD!\n\n{room_desc}", players_here
 
-{room_desc}", players_here
-
-    def player_disconnect(self, player_id: str) -> List[str]:
         player = self.get_or_create_player(player_id)
         return self.get_players_in_room(player.room_id)
 
@@ -155,33 +151,17 @@ class WorldEngine:
             players_here = self.get_players_in_room(current_room)
             others = [p for p in players_here if p != player_id]
             desc = f"[{room.name}]
-{room.description}"
-            
-            if items_here:
-                desc += f"
-Items here: {', '.join([i.name for i in items_here])}"
-                
-            npcs_here = self.npc_manager.get_npcs_in_room(current_room)
-            if npcs_here:
-                desc += f"
-NPCs here: {', '.join([npc.name for npc in npcs_here])}"
-                
-            if others:
-                desc += f"
-Also here: {', '.join(others)}"
-            return desc, None, None
-
+{room.description}"            \n            if items_here:\n                desc += f"
+Items here: {', '.join([i.name for i in items_here])}"                \n            npcs_here = self.npc_manager.get_npcs_in_room(current_room)\n            if npcs_here:\n                desc += f"
+NPCs here: {', '.join([npc.name for npc in npcs_here])}"                \n            if others:\n                desc += f"
         elif action in ["inventory", "inv", "i"]:
             db = SessionLocal()
             items = db.query(Item).filter(Item.owner_id == player_id).all()
             db.close()
             if items:
-                inv = "
-".join([f"- {i.name}" for i in items])
-                return f"You are carrying:
-{inv}", None, None
+                inv = "\n".join([f"- {i.name}" for i in items])
+                return f"You are carrying:\n{inv}", None, None
             return "You are not carrying anything.", None, None
-
         elif action == "take":
             if not args:
                 return "Take what?", None, None
@@ -224,15 +204,11 @@ Also here: {', '.join(others)}"
             
             player_resp = f"You say: '{args}'"
             if npc_responses:
-                player_resp += "
-" + "
-".join(npc_responses)
+                player_resp += "\n" + "\n".join(npc_responses)
                 
             broadcast_msg = f"{player_id} says: '{args}'"
             if npc_responses:
-                broadcast_msg += "
-" + "
-".join(npc_responses)
+                broadcast_msg += "\n" + "\n".join(npc_responses)
                 
             return player_resp, broadcast_msg, players_here
 
@@ -242,15 +218,12 @@ Also here: {', '.join(others)}"
             db.close()
             if not quests:
                 return "You have no active quests.", None, None
-            out = "Your Quests:
-"
+            out = "Your Quests:\n\n"
+
             for q in quests:
                 status = "[Completed]" if q.is_completed else "[Active]"
-                out += f"{status} {q.title}: {q.description}
-"
+                out += f"{status} {q.title}: {q.description}\n"
             return out.strip(), None, None
-
-        elif action == "guild":
             if not args:
                 return "Guild commands: guild list, guild join <name>", None, None
             sub = args.split(" ", 1)
@@ -261,7 +234,8 @@ Also here: {', '.join(others)}"
                 db.close()
                 if not guilds:
                     return "No guilds found.", None, None
-                out = "Guilds:
+                out = "Guilds:\n" + "\n".join([f"- {g.name}: {g.description}" for g in guilds])
+                return out, None, None
 " + "
 ".join([f"- {g.name}: {g.description}" for g in guilds])
                 return out, None, None
@@ -298,7 +272,5 @@ Also here: {', '.join(others)}"
             db.close()
             if not events:
                 return "You have no memories.", None, None
-            out = "Recent Memories:
-" + "
-".join([f"- {e.event_type}: {e.description}" for e in events])
+            out = "Recent Memories:\n" + "\n".join([f"- {e.event_type}: {e.description}" for e in events])
             return out, None, None
